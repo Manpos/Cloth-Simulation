@@ -2,6 +2,14 @@
 #include <imgui\imgui_impl_glfw_gl3.h>
 
 bool show_test_window = false;
+
+namespace ClothMesh {
+	extern const int numCols;
+	extern const int numRows;
+	extern const int numVerts;
+	extern void updateClothMesh(float* array_data);
+}
+
 void GUI() {
 	{	//FrameRate
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
