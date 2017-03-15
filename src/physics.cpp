@@ -2,12 +2,30 @@
 #include <imgui\imgui_impl_glfw_gl3.h>
 
 bool show_test_window = false;
+float *clothArray;
 
 namespace ClothMesh {
 	extern const int numCols;
 	extern const int numRows;
 	extern const int numVerts;
 	extern void updateClothMesh(float* array_data);
+	
+}
+
+float* CreateCloth(float separation, int maxRows, int maxColumns) {
+	int columns = 0, rows = 0;
+	float* result = new float[ClothMesh::numCols * ClothMesh::numRows * 3];
+	for (int i = 0; i < (ClothMesh::numCols * ClothMesh::numRows); i++) {
+		result[i * 3] = separation * columns;
+		result[i * 3 + 2] = separation * rows;
+		result[i * 3 + 1] = 0;
+		++columns;
+		if (columns == maxColumns) {
+			columns = 0;
+			++rows;
+		}
+	}
+	return result;
 }
 
 void GUI() {
@@ -25,10 +43,10 @@ void GUI() {
 }
 
 void PhysicsInit() {
-	//TODO
+	clothArray = CreateCloth(0.5, 18, 14);
 }
 void PhysicsUpdate(float dt) {
-	//TODO
+	ClothMesh::updateClothMesh(clothArray);
 }
 void PhysicsCleanup() {
 	//TODO
