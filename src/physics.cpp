@@ -1,7 +1,9 @@
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_glfw_gl3.h>
+#include <glm\glm.hpp>
 
 bool show_test_window = false;
+using namespace glm;
 
 namespace ClothMesh {
 	extern const int numCols;
@@ -14,6 +16,28 @@ float *clothVertexPosition;
 float *clothVertexPrevPosition;
 
 float separationX = 1, separationY = 1;
+
+struct Plane
+{
+	vec3 normal;
+	float d;
+};
+
+	// Planes of the cube
+	Plane planeDown, planeLeft, planeRight, planeFront, planeBack, planeTop;
+
+	//  Dot product by passing a vector and a position (three floats) 
+	float DotProduct(vec3 vector, float x1, float y1, float z1) {
+		return ((vector.x * x1) + (vector.y * y1) + (vector.z * z1));
+	}
+
+	// Calculates if the cloth is traspassing a plane
+	void planeCollision(int i, Plane plane) {
+		if (((DotProduct(plane.normal, clothVertexPrevPosition[i * 3], clothVertexPrevPosition[i * 3 + 1], clothVertexPrevPosition[i * 3 + 2]) + plane.d)*
+			(DotProduct(plane.normal, clothVertexPosition[i * 3], clothVertexPosition[i * 3 + 1], clothVertexPosition[i * 3 + 2]) + plane.d)) <= 0) {
+			ImGui::Text("Bomb has been planted");
+		}
+	}
 
 void GUI() {
 	{	//FrameRate
@@ -52,11 +76,18 @@ float * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparati
 }
 
 void PhysicsInit() {
-	float meshPosition[3] = { -4 , 8, -4 };
+	float meshPosition[3] = { -10 , 8, -4 };
 	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, 0.5, 0.5, meshPosition);
 	clothVertexPrevPosition = new float[ClothMesh::numVerts * 3];
 
 
+	// Fill the plane sides with the equations
+	planeDown = { vec3(0.f, 1.f, 0.f), 0.f };
+	planeTop = { vec3(0.f, -1.0f, 0.f), 10.0f };
+	planeLeft = { vec3(1.f, 0.0f, 0.f), 5.f };
+	planeRight = { vec3(-1.f, 0.0f, 0.f), 5.f };
+	planeBack = { vec3(0.f, 0.0f, 1.f), 5.f };
+	planeFront = { vec3(0.f, 0.0f, -1.f), 5.f };
 
 	//TODO
 }
