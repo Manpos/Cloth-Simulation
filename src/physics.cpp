@@ -59,9 +59,9 @@ float * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparati
 	for (int i = 0; i < rowVerts * columnVerts; ++i) {
 		if ( currPosX < columnVerts) {
 
-			result[i * 3] = position[2] + vertexSeparationY * currPosY;
+			result[i * 3] = position[0] + vertexSeparationY * currPosY;
 			result[i * 3 + 1] = position[1] + 0;
-			result[i * 3 + 2] = position[0] + vertexSeparationX * currPosX;
+			result[i * 3 + 2] = position[2] + vertexSeparationX * currPosX;
 
 		}
 
@@ -76,10 +76,15 @@ float * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparati
 }
 
 void PhysicsInit() {
-	float meshPosition[3] = { -10 , 8, -4 };
+	float meshPosition[3] = { -4 , 8, -4 };
 	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, 0.5, 0.5, meshPosition);
 	clothVertexPrevPosition = new float[ClothMesh::numVerts * 3];
 
+	for (int i = 0; i < ClothMesh::numVerts; ++i) {
+		clothVertexPrevPosition[i * 3] = clothVertexPosition[i * 3];
+		clothVertexPrevPosition[i * 3 + 1] = clothVertexPosition[i * 3 + 1];
+		clothVertexPrevPosition[i * 3 + 2] = clothVertexPosition[i * 3 + 2];
+	}
 
 	// Fill the plane sides with the equations
 	planeDown = { vec3(0.f, 1.f, 0.f), 0.f };
@@ -93,6 +98,31 @@ void PhysicsInit() {
 }
 void PhysicsUpdate(float dt) {
 	//TODO
+	for (int i = 0; i < ClothMesh::numVerts; ++i) {
+
+		float temp[3];
+
+		if (i != 0 && i != 13) {
+
+			//Verlet prev position save
+			temp[0] = clothVertexPosition[i * 3];
+			temp[1] = clothVertexPosition[i * 3 + 1];
+			temp[2] = clothVertexPosition[i * 3 + 2];
+
+			//Verlet position update X,Y,Z
+			clothVertexPosition[i * 3] = clothVertexPosition[i * 3] + (clothVertexPosition[i * 3] - clothVertexPrevPosition[i * 3]) + 0 * (dt*dt);
+			clothVertexPosition[i * 3 + 1] = clothVertexPosition[i * 3 + 1] + (clothVertexPosition[i * 3 + 1] - clothVertexPrevPosition[i * 3 + 1]) + (-9.8) * (dt*dt);
+			clothVertexPosition[i * 3 + 2] = clothVertexPosition[i * 3 + 2] + (clothVertexPosition[i * 3 + 2] - clothVertexPrevPosition[i * 3 + 2]) + 0 * (dt*dt);
+
+			//Verlet last position save X,Y,Z
+			clothVertexPrevPosition[i * 3] = temp[0];
+			clothVertexPrevPosition[i * 3 + 1] = temp[1];
+			clothVertexPrevPosition[i * 3 + 2] = temp[2];
+		}
+		
+
+	}
+
 	ClothMesh::updateClothMesh(clothVertexPosition);
 }
 void PhysicsCleanup() {
