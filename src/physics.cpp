@@ -12,8 +12,10 @@ namespace ClothMesh {
 	extern void updateClothMesh(float* array_data);
 }
 
-float *clothVertexPosition;
-float *clothVertexPrevPosition;
+vec3 *clothVertexPosition;
+vec3 *clothVertexPrevPosition;
+vec3 *clothVertexVelocity;
+vec3 *clothVertexForce;
 
 float separationX = 1, separationY = 1;
 
@@ -31,13 +33,13 @@ struct Plane
 		return ((vector.x * x1) + (vector.y * y1) + (vector.z * z1));
 	}
 
-	// Calculates if the cloth is traspassing a plane
-	void planeCollision(int i, Plane plane) {
-		if (((DotProduct(plane.normal, clothVertexPrevPosition[i * 3], clothVertexPrevPosition[i * 3 + 1], clothVertexPrevPosition[i * 3 + 2]) + plane.d)*
-			(DotProduct(plane.normal, clothVertexPosition[i * 3], clothVertexPosition[i * 3 + 1], clothVertexPosition[i * 3 + 2]) + plane.d)) <= 0) {
-			ImGui::Text("Bomb has been planted");
-		}
-	}
+	//// Calculates if the cloth is traspassing a plane
+	//void planeCollision(int i, Plane plane) {
+	//	if (((DotProduct(plane.normal, clothVertexPrevPosition[i * 3], clothVertexPrevPosition[i * 3 + 1], clothVertexPrevPosition[i * 3 + 2]) + plane.d)*
+	//		(DotProduct(plane.normal, clothVertexPosition[i * 3], clothVertexPosition[i * 3 + 1], clothVertexPosition[i * 3 + 2]) + plane.d)) <= 0) {
+	//		ImGui::Text("Bomb has been planted");
+	//	}
+	//}
 
 void GUI() {
 	{	//FrameRate
@@ -53,16 +55,13 @@ void GUI() {
 	}
 }
 
-float * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparationX, float vertexSeparationY, float position[3]) {
+vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparationX, float vertexSeparationY, vec3 position) {
 	int currPosX = 0, currPosY = 0;
-	float *result = new float[columnVerts * rowVerts * 3];
+	vec3 *result = new vec3[columnVerts * rowVerts * 3];
 	for (int i = 0; i < rowVerts * columnVerts; ++i) {
+
 		if ( currPosX < columnVerts) {
-
-			result[i * 3] = position[0] + vertexSeparationY * currPosY;
-			result[i * 3 + 1] = position[1] + 0;
-			result[i * 3 + 2] = position[2] + vertexSeparationX * currPosX;
-
+			result[i] = vec3 (position.x + vertexSeparationY * currPosY, position.y, position.z + vertexSeparationY * currPosX);
 		}
 
 		currPosX++;
@@ -75,15 +74,18 @@ float * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparati
 	return result;
 }
 
+
 void PhysicsInit() {
-	float meshPosition[3] = { -4 , 8, -4 };
+	vec3 meshPosition ( -4 , 8, -4 );
 	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, 0.5, 0.5, meshPosition);
-	clothVertexPrevPosition = new float[ClothMesh::numVerts * 3];
+	clothVertexPrevPosition = new vec3[ClothMesh::numVerts];
+	clothVertexVelocity = new vec3[ClothMesh::numVerts];
+	clothVertexForce = new vec3[ClothMesh::numVerts];
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
-		clothVertexPrevPosition[i * 3] = clothVertexPosition[i * 3];
-		clothVertexPrevPosition[i * 3 + 1] = clothVertexPosition[i * 3 + 1];
-		clothVertexPrevPosition[i * 3 + 2] = clothVertexPosition[i * 3 + 2];
+
+		clothVertexPrevPosition[i] = clothVertexPosition[i];
+		clothVertexVelocity[i] = vec3(0, 0, 0);
 	}
 
 	// Fill the plane sides with the equations
@@ -100,30 +102,30 @@ void PhysicsUpdate(float dt) {
 	//TODO
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
-		float temp[3];
+		vec3 temp;
+		vec3 vertForce;
+		vec3 nextVertForce;
 
 		if (i != 0 && i != 13) {
 
 			//Verlet prev position save
-			temp[0] = clothVertexPosition[i * 3];
-			temp[1] = clothVertexPosition[i * 3 + 1];
-			temp[2] = clothVertexPosition[i * 3 + 2];
+			temp = clothVertexPosition[i];
 
 			//Verlet position update X,Y,Z
-			clothVertexPosition[i * 3] = clothVertexPosition[i * 3] + (clothVertexPosition[i * 3] - clothVertexPrevPosition[i * 3]) + 0 * (dt*dt);
-			clothVertexPosition[i * 3 + 1] = clothVertexPosition[i * 3 + 1] + (clothVertexPosition[i * 3 + 1] - clothVertexPrevPosition[i * 3 + 1]) + (-9.8) * (dt*dt);
-			clothVertexPosition[i * 3 + 2] = clothVertexPosition[i * 3 + 2] + (clothVertexPosition[i * 3 + 2] - clothVertexPrevPosition[i * 3 + 2]) + 0 * (dt*dt);
+			clothVertexPosition[i] = clothVertexPosition[i] + (clothVertexPosition[i] - clothVertexPrevPosition[i]) + vec3(0,-9.8, 0) * (dt*dt);
 
 			//Verlet last position save X,Y,Z
-			clothVertexPrevPosition[i * 3] = temp[0];
-			clothVertexPrevPosition[i * 3 + 1] = temp[1];
-			clothVertexPrevPosition[i * 3 + 2] = temp[2];
+			clothVertexPrevPosition[i] = temp;
+
+			clothVertexVelocity[i] = (clothVertexPosition[i] - clothVertexPrevPosition[i]) / dt;
+
+
 		}
 		
 
 	}
 
-	ClothMesh::updateClothMesh(clothVertexPosition);
+	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
 }
 void PhysicsCleanup() {
 	//TODO
