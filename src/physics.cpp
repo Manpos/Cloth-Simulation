@@ -32,13 +32,13 @@ struct Plane
 	float d;
 };
 
-	// Planes of the cube
-	Plane planeDown, planeLeft, planeRight, planeFront, planeBack, planeTop;
+// Planes of the cube
+Plane planeDown, planeLeft, planeRight, planeFront, planeBack, planeTop;
 
-	//  Dot product by passing a vector and a position (three floats) 
-	float DotProduct(vec3 vector, float x1, float y1, float z1) {
-		return ((vector.x * x1) + (vector.y * y1) + (vector.z * z1));
-	}
+//  Dot product by passing a vector and a position (three floats) 
+float DotProduct(vec3 vector, float x1, float y1, float z1) {
+	return ((vector.x * x1) + (vector.y * y1) + (vector.z * z1));
+}
 
 	//// Calculates if the cloth is traspassing a plane
 	//void planeCollision(int i, Plane plane) {
@@ -59,6 +59,17 @@ void GUI() {
 	if(show_test_window) {
 		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
 		ImGui::ShowTestWindow(&show_test_window);
+	}
+}
+
+void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
+	position.y = 0;
+	prevPosition.y = 0;
+}
+
+void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
+	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
+		Bounce(prevPosition, position, plane);
 	}
 }
 
@@ -92,7 +103,7 @@ vec3 forceBetweenParticles(vec3* position, vec3* velocity, int part1, int part2,
 vec3 springsForceCalc(vec3* position, vec3* velocity, int i, int rows, int cols,float L, float d, float e) {
 	//Strech springs
 	//Horizontal
-	std::cout << i << std::endl;
+	/*std::cout << i << std::endl;
 	if (i - 1 * cols >= 0) {
 		std::cout << "NO LEFT LIMIT" << std::endl;
 	}
@@ -104,7 +115,7 @@ vec3 springsForceCalc(vec3* position, vec3* velocity, int i, int rows, int cols,
 	}
 	if ((i % cols) + 1 <= cols - 1) {
 		std::cout << "NO DOWN LIMIT" << std::endl;
-	}
+	}*/
 	
 	//Shear springs
 
@@ -154,6 +165,8 @@ void PhysicsUpdate(float dt) {
 
 		if (i != 0 && i != 13) {
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], springsForceCalc(clothVertexPosition, clothVertexVelocity, i, ClothMesh::numRows, ClothMesh::numCols, separationX, 0.7, 0.7), 1, dt);
+		
+			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
 		}
 	}
 
