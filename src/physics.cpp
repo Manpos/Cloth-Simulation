@@ -64,7 +64,7 @@ void GUI() {
 
 vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparationX, float vertexSeparationY, vec3 position) {
 	int currPosX = 0, currPosY = 0;
-	vec3 *result = new vec3[columnVerts * rowVerts * 3];
+	vec3 *result = new vec3[columnVerts * rowVerts];
 	for (int i = 0; i < rowVerts * columnVerts; ++i) {
 
 		if ( currPosX < columnVerts) {
@@ -93,17 +93,17 @@ vec3 springsForceCalc(vec3* position, vec3* velocity, int i, int rows, int cols,
 	//Strech springs
 	//Horizontal
 	std::cout << i << std::endl;
-	if (i - 1 * rows >= 0) {
-		std::cout << "NO UP LIMIT" << std::endl;
-	}
-	if (i + 1 * rows <= rows * cols) {
-		std::cout << "NO DOWN LIMIT" << std::endl;
-	}
-	if ((i - 1) % cols >= 0) {
+	if (i - 1 * cols >= 0) {
 		std::cout << "NO LEFT LIMIT" << std::endl;
 	}
-	if ((i + 1) % cols <= cols * rows) {
-		std::cout << "RIGHT LIMIT" << std::endl;
+	if (i + 1 * cols <= rows * cols) {
+		std::cout << "NO RIGHT LIMIT" << std::endl;
+	}
+	if ((i % cols) - 1 >= 0) {
+		std::cout << "NO UP LIMIT" << std::endl;
+	}
+	if ((i % cols) + 1 <= cols - 1) {
+		std::cout << "NO DOWN LIMIT" << std::endl;
 	}
 	
 	//Shear springs
