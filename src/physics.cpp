@@ -22,6 +22,8 @@ vec3 *clothVertexForce;
 
 float separationX = 1, separationY = 1;
 float gravity = -9.8;
+vec3 spherePosition (0.0f, 1.0f, 0.0f);
+float sphereRadius = 1.0f;
 
 #pragma endregion
 
@@ -70,6 +72,13 @@ void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
 void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
 	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
 		Bounce(prevPosition, position, plane);
+	}
+}
+
+void IsCollidingSphere(float radius, vec3 center, vec3 &position) {
+	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
+	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
+
 	}
 }
 
@@ -157,7 +166,6 @@ void PhysicsInit() {
 	planeBack = { vec3(0.f, 0.0f, 1.f), 5.f };
 	planeFront = { vec3(0.f, 0.0f, -1.f), 5.f };
 
-	//TODO
 }
 void PhysicsUpdate(float dt) {
 	//TODO

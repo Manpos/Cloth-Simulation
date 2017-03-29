@@ -38,8 +38,11 @@ namespace ClothMesh {
 	extern void drawClothMesh();
 }
 
+extern glm::vec3 spherePosition;
+extern float sphereRadius;
+
 void setupPrims() {
-	Sphere::setupSphere();
+	Sphere::setupSphere(spherePosition, sphereRadius);
 	Capsule::setupCapsule();
 	LilSpheres::setupParticles(LilSpheres::maxParticles);
 	ClothMesh::setupClothMesh();
