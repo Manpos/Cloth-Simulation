@@ -1,6 +1,7 @@
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_glfw_gl3.h>
 #include <glm\glm.hpp>
+#include <iostream>
 
 bool show_test_window = false;
 using namespace glm;
@@ -17,7 +18,13 @@ vec3 *clothVertexPrevPosition;
 vec3 *clothVertexVelocity;
 vec3 *clothVertexForce;
 
+#pragma region Variables
+
 float separationX = 1, separationY = 1;
+float gravity = -9.8;
+
+#pragma endregion
+
 
 struct Plane
 {
@@ -74,6 +81,49 @@ vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparatio
 	return result;
 }
 
+//Particle position vector array, particle velocity vector array, position in array (part1 & part2), original separation (L), damping (d), elasticity (e)
+vec3 forceBetweenParticles(vec3* position, vec3* velocity, int part1, int part2, float L, float d, float e) {
+
+	return -(e * (length(position[part1] - position[part2]) - L) + d * (velocity[part1] - velocity[part2]) * ((position[part1] - position[part2]) / length(position[part1] - position[part2]))) * 
+		((position[part1] - position[part2]) / length(position[part1] - position[part2]));
+}
+
+
+vec3 springsForceCalc(vec3* position, vec3* velocity, int i, int rows, int cols,float L, float d, float e) {
+	//Strech springs
+	//Horizontal
+	std::cout << i << std::endl;
+	if (i - 1 * rows >= 0) {
+		std::cout << "NO UP LIMIT" << std::endl;
+	}
+	if (i + 1 * rows <= rows * cols) {
+		std::cout << "NO DOWN LIMIT" << std::endl;
+	}
+	if ((i - 1) % cols >= 0) {
+		std::cout << "NO LEFT LIMIT" << std::endl;
+	}
+	if ((i + 1) % cols <= cols * rows) {
+		std::cout << "RIGHT LIMIT" << std::endl;
+	}
+	
+	//Shear springs
+
+	//Bending springs
+	return vec3(0, gravity, 0);
+}
+
+void verletSolver(vec3 &position, vec3 &prevPosition, vec3 &velocity, vec3 force, float m, float time) {
+	//Verlet prev position save
+	vec3 temp = position;
+
+	//Verlet position update X,Y,Z
+	position = position + (position - prevPosition) + force/m * (time*time);
+
+	//Verlet last position save X,Y,Z
+	prevPosition = temp;
+
+	velocity = (position - prevPosition) / time;
+}
 
 void PhysicsInit() {
 	vec3 meshPosition ( -4 , 8, -4 );
@@ -102,27 +152,9 @@ void PhysicsUpdate(float dt) {
 	//TODO
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
-		vec3 temp;
-		vec3 vertForce;
-		vec3 nextVertForce;
-
 		if (i != 0 && i != 13) {
-
-			//Verlet prev position save
-			temp = clothVertexPosition[i];
-
-			//Verlet position update X,Y,Z
-			clothVertexPosition[i] = clothVertexPosition[i] + (clothVertexPosition[i] - clothVertexPrevPosition[i]) + vec3(0,-9.8, 0) * (dt*dt);
-
-			//Verlet last position save X,Y,Z
-			clothVertexPrevPosition[i] = temp;
-
-			clothVertexVelocity[i] = (clothVertexPosition[i] - clothVertexPrevPosition[i]) / dt;
-
-
+			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], springsForceCalc(clothVertexPosition, clothVertexVelocity, i, ClothMesh::numRows, ClothMesh::numCols, separationX, 0.7, 0.7), 1, dt);
 		}
-		
-
 	}
 
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
