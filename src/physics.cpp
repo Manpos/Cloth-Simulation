@@ -24,7 +24,7 @@ float separationX = 0.5, separationY = 0.5;
 float gravity = -9.8;
 vec3 spherePosition (0.0f, 1.0f, 0.0f);
 float sphereRadius = 1.0f;
-float stretchD = 2, shearD = 2, bendD = 2, stretchK = 100, shearK, bendK;
+float stretchD = 2, shearD = 2, bendD = 2, stretchK = 200, shearK, bendK;
 
 #pragma endregion
 
@@ -139,8 +139,7 @@ vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparatio
 //Particle position vector array, particle velocity vector array, position in array (part1 & part2), original separation (L), damping (d), elasticity (e)
 vec3 forceBetweenParticles(vec3* position, vec3* velocity, int part1, int part2, float L, float d, float e) {
 
-	return -(e * (length(position[part1] - position[part2]) - L) + dot(d *(velocity[part1] - velocity[part2]), ((position[part1] - position[part2]) / length(position[part1] - position[part2])))) *
-		((position[part1] - position[part2]) / length(position[part1] - position[part2]));
+	return -(e * (length(position[part1] - position[part2]) - L) + 	d * dot((velocity[part1] - velocity[part2]), normalize(position[part1] - position[part2]))) * normalize(position[part1] - position[part2]);
 }
 
 
@@ -155,7 +154,7 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols, L, stretchd, e); }
 
 	//RIGHT
-	if ((i / cols) + 1 <= rows - 1) { 
+	if ((i / cols) + 1 < rows) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols, L, stretchd, e); }
 
 	//UP
@@ -163,7 +162,7 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 1, L, stretchd, e); }
 
 	//DOWN
-	if ((i % cols) + 1 <= cols - 1) { 
+	if ((i % cols) + 1 < cols) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i + 1, L, stretchd, e); }
 
 	//Shear
@@ -173,15 +172,15 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols - 1, sqrt(L * L + L * L), sheard, e); }
 	
 	//UP-RIGHT
-	if ((i / cols) + 1 <= rows - 1 && (i % cols) - 1 >= 0) { 
+	if ((i / cols) + 1 < rows && (i % cols) - 1 >= 0) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols - 1, sqrt(L * L + L * L), sheard, e); }
 
 	//DOWN-LEFT
-	if ((i / cols) - 1 >= 0 && (i % cols) + 1 <= cols - 1) { 
+	if ((i / cols) - 1 >= 0 && (i % cols) + 1 < cols) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols + 1, sqrt(L * L + L * L), sheard, e); }
 
 	//DOWN-RIGHT
-	if ((i / cols) + 1 <= rows - 1 && (i % cols) + 1 <= cols - 1) {	
+	if ((i / cols) + 1 < rows && (i % cols) + 1 < cols) {	
 		totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols + 1, sqrt(L * L + L * L), sheard, e); }
 	
 	//Bending springs
@@ -191,7 +190,7 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 2 * cols, L * 2, bendd, e); }
 
 	//RIGHT
-	if ((i / cols) + 2 <= rows - 1) { 
+	if ((i / cols) + 2 < rows) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i + 2 * cols, L * 2, bendd, e); }
 
 	//UP
@@ -199,7 +198,7 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 		totalForce += forceBetweenParticles(position, velocity, i, i - 2, L * 2, bendd, e); }
 
 	//DOWN
-	if ((i % cols) + 2 <= cols - 1) { 
+	if ((i % cols) + 2 < cols) { 
 		totalForce += forceBetweenParticles(position, velocity, i, i + 2, L * 2, bendd, e); }
 
 	totalForce += vec3(0, gravity, 0);
@@ -208,7 +207,48 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 	
 }
 
-void verletSolver(vec3 &position, vec3 &prevPosition, vec3 &velocity, vec3 &force, float m, float time) {
+void checkMaxElongation(vec3* position, vec3* prevPosition, int i, int rows, int cols, float L, float elongation) {
+
+	//LEFT
+	if ((i / cols) - 1 >= 0) {
+
+		if (length(position[i] - position[i - cols * 1]) > L + L * (elongation / 100)) {
+			position[i] = (position[i - cols * 1] + position[i]) / 2.f;
+		}
+	
+	}
+
+	//RIGHT
+	if ((i / cols) + 1 < rows) {
+	
+		if (length(position[i] - position[i + cols * 1]) > L + L * (elongation/100)) {
+			position[i] = (position[i + cols * 1] + position[i]) / 2.f;
+		}
+
+	}
+
+	//UP
+	if ((i % cols) - 1 >= 0) {
+	
+		if (length(position[i] - position[i - 1]) > L + L * (elongation / 100)) {
+			position[i] = (position[i - 1] + position[i]) / 2.f;
+		}
+
+	}
+
+	//DOWN
+	if ((i % cols) + 1 < cols) {
+	
+		if (length(position[i] - position[i + 1]) > L + L * (elongation / 100)) {
+			position[i] = (position[i + 1] + position[i]) / 2.f;
+		}
+
+	}
+
+
+}
+
+void verletSolver(vec3 &position, vec3 &prevPosition, vec3 &velocity, vec3 force, float m, float time) {
 	//Verlet prev position save
 	vec3 temp = position;
 
@@ -222,7 +262,7 @@ void verletSolver(vec3 &position, vec3 &prevPosition, vec3 &velocity, vec3 &forc
 }
 
 void PhysicsInit() {
-	vec3 meshPosition ( -4 , 8, -4 );
+	vec3 meshPosition ( -4 , 9, -4 );
 	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, separationX, separationY, meshPosition);
 	clothVertexPrevPosition = new vec3[ClothMesh::numVerts];
 	clothVertexVelocity = new vec3[ClothMesh::numVerts];
@@ -246,25 +286,29 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	//TODO
-	if (ImGui::Button("Reset")) { PhysicsInit(); };
+	if (ImGui::Button("Reset")) { 
+		PhysicsInit(); };
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
 		if (i != 0 && i != 13) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
-			//IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);			
 			//IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i]);
-			springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
-		}
-
-		}
+			//springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
+		}		
 		
+		
+	}
 
-	clothVertexPosition[14];
-	clothVertexVelocity[14];
-	clothVertexForce[14];
+	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
+		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);			
+		//checkMaxElongation(clothVertexPosition, clothVertexPrevPosition, j, ClothMesh::numRows, ClothMesh::numCols, separationX, 40);
+		
+	}
+		
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
 }
 void PhysicsCleanup() {
