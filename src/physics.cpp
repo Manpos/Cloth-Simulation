@@ -24,7 +24,7 @@ float separationX = 0.5, separationY = 0.5;
 float gravity = -9.8;
 vec3 spherePosition (0.0f, 1.0f, 0.0f);
 float sphereRadius = 1.0f;
-vec3 fixedInitialPosition[2];
+float stretchD = 2, shearD = 2, bendD = 2, stretchK = 100, shearK, bendK;
 
 #pragma endregion
 
@@ -54,8 +54,10 @@ float DotProduct(vec3 vector, float x1, float y1, float z1) {
 void GUI() {
 	{	//FrameRate
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-		//TODO
+		ImGui::SliderFloat("Constant", &stretchK, 0, 1000);
+		ImGui::SliderFloat("Stretch Damping", &stretchD, 0, 100);
+		ImGui::SliderFloat("Shear Damping", &shearD, 0, 100);
+		ImGui::SliderFloat("Bend Damping", &bendD, 0, 100);
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
@@ -112,51 +114,52 @@ vec3 forceBetweenParticles(vec3* position, vec3* velocity, int part1, int part2,
 }
 
 
-void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, int rows, int cols, float L, float d, float e) {
+void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, int rows, int cols, float L, float stretchd, float sheard, float bendd , float e) {
 	
 	vec3 totalForce = vec3(0.f);
 
 	//Strech 
 
 	//LEFT
-	if ((i / cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols, L, d, e); }
+	if (i - 1 * cols >= 0) {
+		totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols, L, stretchd, e); }
 
 	//RIGHT
-	if ((i / cols) + 1 <= rows - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols, L, d, e); }
+	if (i + 1 * cols <= rows - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols, L, stretchd, e); }
 
 	//UP
-	if ((i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 1, L, d, e); }
+	if ((i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 1, L, stretchd, e); }
 
 	//DOWN
-	if ((i % cols) + 1 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 1, L, d, e); }
+	if ((i % cols) + 1 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 1, L, stretchd, e); }
 
-	//Diagonal
+	//Shear
 
 	//UP-LEFT
-	if ((i / cols) - 1 >= 0 && (i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols - 1, sqrt(L * L + L * L), d, e); }
+	if ((i / cols) - 1 >= 0 && (i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols - 1, sqrt(L * L + L * L), sheard, e); }
 	
 	//UP-RIGHT
-	if ((i / cols) + 1 <= rows - 1 && (i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols - 1, sqrt(L * L + L * L), d, e); }
+	if ((i / cols) + 1 <= rows - 1 && (i % cols) - 1 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols - 1, sqrt(L * L + L * L), sheard, e); }
 
 	//DOWN-LEFT
-	if ((i / cols) - 1 >= 0 && (i % cols) + 1 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols + 1, sqrt(L * L + L * L), d, e); }
+	if ((i / cols) - 1 >= 0 && (i % cols) + 1 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i - 1 * cols + 1, sqrt(L * L + L * L), sheard, e); }
 
 	//DOWN-RIGHT
-	if ((i / cols) + 1 <= rows - 1 && (i % cols) + 1 <= cols - 1) {	totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols + 1, sqrt(L * L + L * L), d, e); }
+	if ((i / cols) + 1 <= rows - 1 && (i % cols) + 1 <= cols - 1) {	totalForce += forceBetweenParticles(position, velocity, i, i + 1 * cols + 1, sqrt(L * L + L * L), sheard, e); }
 	
 	//Bending springs
 
 	//LEFT
-	if ((i / cols) - 2 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 2 * cols, L * 2, d, e); }
+	if ((i / cols) - 2 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 2 * cols, L * 2, bendd, e); }
 
 	//RIGHT
-	if ((i / cols) + 2 <= rows - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 2 * cols, L * 2, d, e); }
+	if ((i / cols) + 2 <= rows - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 2 * cols, L * 2, bendd, e); }
 
 	//UP
-	if ((i % cols) - 2 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 2, L * 2, d, e); }
+	if ((i % cols) - 2 >= 0) { totalForce += forceBetweenParticles(position, velocity, i, i - 2, L * 2, bendd, e); }
 
 	//DOWN
-	if ((i % cols) + 2 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 2, L * 2, d, e); }
+	if ((i % cols) + 2 <= cols - 1) { totalForce += forceBetweenParticles(position, velocity, i, i + 2, L * 2, bendd, e); }
 
 	totalForce += vec3(0, gravity, 0);
 
@@ -199,19 +202,20 @@ void PhysicsInit() {
 	planeFront = { vec3(0.f, 0.0f, -1.f), 5.f };
 
 }
+
 void PhysicsUpdate(float dt) {
 	//TODO
+	if (ImGui::Button("Reset")) { PhysicsInit(); };
+
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
-		
+
 		if (i != 0 && i != 13) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
 			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, 2.5, 1);
+			springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
 
 		}
-
-
 	}
 
 	clothVertexPosition[14];
