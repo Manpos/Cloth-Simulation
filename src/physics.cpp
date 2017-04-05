@@ -38,18 +38,66 @@ struct Plane
 // Planes of the cube
 Plane planeDown, planeLeft, planeRight, planeFront, planeBack, planeTop;
 
-//  Dot product by passing a vector and a position (three floats) 
-float DotProduct(vec3 vector, float x1, float y1, float z1) {
-	return ((vector.x * x1) + (vector.y * y1) + (vector.z * z1));
+// Mathematic functions
+
+	// Solve a quadratic equation to calculate a value of the point where collides the vector against the sphere
+	float SphereQuadraticEquation(float a, float b, float c) {
+		float x1 = -b + sqrt((b * b) - 4 * a * c) / (2 * a);
+		float x2 = -b - sqrt((b * b) - 4 * a * c) / (2 * a);
+
+		// We just need the value is between 0 and 1
+		if (x1 >= 0 && x1 <= 1)
+			return x1;
+		if (x2 >= 0 && x2 <= 1)
+			return x2;
+	}
+
+	// Calculate the collision point between two points and a sphere
+	vec3 PointCollisionSphereVector(vec3 position, vec3 prevPosition, float sphereRadius, vec3 sphereCenter) {
+		// Vector between positions (P1 - P0)
+		vec3 vectorPos{ position.x - prevPosition.x, position.y - prevPosition.y, position.z - prevPosition.z };
+		vectorPos = normalize(vectorPos);
+
+		// Vector between the center of the sphere and P0
+		vec3 vecSpherePos{ prevPosition.x - sphereCenter.x, prevPosition.y - sphereCenter.y, prevPosition.z - sphereCenter.z };
+
+		//Calculate the three components of the quadratic equation (ax2 + bx + c = 0)
+		// a = (P1 - P0)^2
+		float a = dot(vectorPos, vectorPos);
+		// b = 2 * ((P1 - P0) * (P0 - Sc))
+		float b = 2 * dot(vectorPos, vecSpherePos);
+		// c = (P0 - Sc) * (P0 - Sc) - Sr^2
+		float c = dot(vecSpherePos, vecSpherePos) - (sphereRadius * sphereRadius);
+
+		// Result of the quadratic equation
+		float alpha = SphereQuadraticEquation(a, b, c);
+
+		// Calculate the point of the collision
+		return prevPosition + (position - prevPosition) * alpha;
+	}
+
+void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
+	position.y = 0;
+	prevPosition.y = 0;
 }
 
-	//// Calculates if the cloth is traspassing a plane
-	//void planeCollision(int i, Plane plane) {
-	//	if (((DotProduct(plane.normal, clothVertexPrevPosition[i * 3], clothVertexPrevPosition[i * 3 + 1], clothVertexPrevPosition[i * 3 + 2]) + plane.d)*
-	//		(DotProduct(plane.normal, clothVertexPosition[i * 3], clothVertexPosition[i * 3 + 1], clothVertexPosition[i * 3 + 2]) + plane.d)) <= 0) {
-	//		ImGui::Text("Bomb has been planted");
-	//	}
-	//}
+void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
+	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
+		Bounce(prevPosition, position, plane);
+	}
+}
+
+void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 prevPos) {
+	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
+	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
+		vec3 point = PointCollisionSphereVector(position, prevPos, radius, center);
+		
+		std::cout << "P1	" << position.x << " " << position.y << " " << position.z << std::endl;
+		std::cout << "Collision point	" << point.x << " " << point.y << " " << point.z << std::endl;
+		std::cout << "P0	" << prevPos.x << " " << prevPos.y << " " << prevPos.z << std::endl << std::endl;
+		
+	}
+}
 
 void GUI() {
 	{	//FrameRate
@@ -67,25 +115,7 @@ void GUI() {
 	}
 }
 
-void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
-	position.y = 0;
-	prevPosition.y = 0;
-}
 
-void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
-	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
-		Bounce(prevPosition, position, plane);
-	}
-}
-
-void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 prevPos) {
-	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
-	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
-		std::cout << position.x << " " << position.y << " " << position.z << std::endl;
-		std::cout << prevPos.x << " " << prevPos.y << " " << prevPos.z << std::endl;
-
-	}
-}
 
 vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparationX, float vertexSeparationY, vec3 position) {
 	int currPosX = 0, currPosY = 0;
@@ -224,6 +254,7 @@ void PhysicsUpdate(float dt) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
 			//IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			//IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i]);
 			springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
 		}
 
