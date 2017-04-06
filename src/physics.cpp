@@ -29,6 +29,7 @@ float stretchD = 2, shearD = 2, bendD = 2, stretchK = 200, shearK, bendK;
 #pragma endregion
 
 
+
 struct Plane
 {
 	vec3 normal;
@@ -40,45 +41,73 @@ Plane planeDown, planeLeft, planeRight, planeFront, planeBack, planeTop;
 
 // Mathematic functions
 
-	// Solve a quadratic equation to calculate a value of the point where collides the vector against the sphere
-	float SphereQuadraticEquation(float a, float b, float c) {
-		float x1 = -b + sqrt((b * b) - 4 * a * c) / (2 * a);
-		float x2 = -b - sqrt((b * b) - 4 * a * c) / (2 * a);
+// Solve a quadratic equation to calculate a value of the point where collides the vector against the sphere
+float SphereQuadraticEquation(float a, float b, float c) {
+	float x1 = -b + sqrt((b * b) - 4 * a * c) / (2 * a);
+	float x2 = -b - sqrt((b * b) - 4 * a * c) / (2 * a);
 
-		// We just need the value is between 0 and 1
-		if (x1 >= 0 && x1 <= 1)
-			return x1;
-		if (x2 >= 0 && x2 <= 1)
-			return x2;
-	}
+	// We just need the value is between 0 and 1
+	if (x1 >= 0 && x1 <= 1)
+		return x1;
+	if (x2 >= 0 && x2 <= 1)
+		return x2;
+}
 
-	// Calculate the collision point between two points and a sphere
-	vec3 PointCollisionSphereVector(vec3 position, vec3 prevPosition, float sphereRadius, vec3 sphereCenter) {
-		// Vector between positions (P1 - P0)
-		vec3 vectorPos{ position.x - prevPosition.x, position.y - prevPosition.y, position.z - prevPosition.z };
-		vectorPos = normalize(vectorPos);
+// Calculate the collision point between two points and a sphere
+vec3 PointCollisionSphereVector(vec3 position, vec3 prevPosition, float sphereRadius, vec3 sphereCenter) {
+	// Vector between positions (P1 - P0)
+	vec3 vectorPos{ position.x - prevPosition.x, position.y - prevPosition.y, position.z - prevPosition.z };
+	vectorPos = normalize(vectorPos);
 
-		// Vector between the center of the sphere and P0
-		vec3 vecSpherePos{ prevPosition.x - sphereCenter.x, prevPosition.y - sphereCenter.y, prevPosition.z - sphereCenter.z };
+	// Vector between the center of the sphere and P0
+	vec3 vecSpherePos{ prevPosition.x - sphereCenter.x, prevPosition.y - sphereCenter.y, prevPosition.z - sphereCenter.z };
 
-		//Calculate the three components of the quadratic equation (ax2 + bx + c = 0)
-		// a = (P1 - P0)^2
-		float a = dot(vectorPos, vectorPos);
-		// b = 2 * ((P1 - P0) * (P0 - Sc))
-		float b = 2 * dot(vectorPos, vecSpherePos);
-		// c = (P0 - Sc) * (P0 - Sc) - Sr^2
-		float c = dot(vecSpherePos, vecSpherePos) - (sphereRadius * sphereRadius);
+	//Calculate the three components of the quadratic equation (ax2 + bx + c = 0)
+	// a = (P1 - P0)^2
+	float a = dot(vectorPos, vectorPos);
+	// b = 2 * ((P1 - P0) * (P0 - Sc))
+	float b = 2 * dot(vectorPos, vecSpherePos);
+	// c = (P0 - Sc) * (P0 - Sc) - Sr^2
+	float c = dot(vecSpherePos, vecSpherePos) - (sphereRadius * sphereRadius);
 
-		// Result of the quadratic equation
-		float alpha = SphereQuadraticEquation(a, b, c);
+	// Result of the quadratic equation
+	float alpha = SphereQuadraticEquation(a, b, c);
 
-		// Calculate the point of the collision
-		return prevPosition + (position - prevPosition) * alpha;
-	}
+	// Calculate the point of the collision
+	return prevPosition + (position - prevPosition) * alpha;
+}
+
+Plane CalculateTangentialPlane(vec3 point, vec3 sphereCenter) {
+	Plane planeTan;
+	planeTan.normal = normalize(point - sphereCenter);
+	planeTan.d = (planeTan.normal.x * point.x + planeTan.normal.y * point.y + planeTan.normal.z * point.z);
+	return planeTan;
+}
 
 void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
-	position.y = 0;
-	prevPosition.y = 0;
+	float tempPosX, tempPosY, tempPosZ, prevTempX, prevTempY, prevTempZ, tempVelX, tempVelY, tempVelZ;
+	/*
+	tempPosX = position.x - (1 + 0.5) * (dot(plane.normal, position) + plane.d) * plane.normal.x;
+	tempPosY = position.y - (1 + 0.5) * (dot(plane.normal, position) + plane.d) * plane.normal.y;
+	tempPosZ = position.z - (1 + 0.5) * (dot(plane.normal, position) + plane.d) * plane.normal.z;
+
+	prevTempX = prevPosition.x - (1 + 0.5) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal.x;
+	prevTempY = prevPosition.y - (1 + 0.5) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal.y;
+	prevTempZ = prevPosition.z - (1 + 0.5) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal.z;
+
+	tempVelX = velocity.x - (1 + 0.5) * (dot(plane.normal, velocity)) * plane.normal.x;
+	tempVelY = velocity.y - (1 + 0.5) * (dot(plane.normal, velocity)) * plane.normal.y;
+	tempVelZ = velocity.z - (1 + 0.5) * (dot(plane.normal, velocity)) * plane.normal.z;
+
+
+	position = { tempPosX, tempPosY, tempPosZ };
+	prevPosition = { prevTempX, prevTempY, prevTempZ };
+	velocity = { tempVelX, tempVelY, tempVelZ };
+	*/
+
+	position = position - float(1 + 0.5) * (dot(plane.normal, position) + plane.d) * plane.normal;
+	prevPosition = prevPosition - float(1 + 0.5) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal;
+
 }
 
 void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
@@ -87,15 +116,18 @@ void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
 	}
 }
 
-void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 prevPos) {
+void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 &prevPos) {
 	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
 	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
-		vec3 point = PointCollisionSphereVector(position, prevPos, radius, center);
-		
+		vec3 collisionPoint = PointCollisionSphereVector(position, prevPos, radius, center);
+		Plane tangentialPlane = CalculateTangentialPlane(collisionPoint, center);
+		Bounce(prevPos, position, planeDown);
+		/*
 		std::cout << "P1	" << position.x << " " << position.y << " " << position.z << std::endl;
-		std::cout << "Collision point	" << point.x << " " << point.y << " " << point.z << std::endl;
-		std::cout << "P0	" << prevPos.x << " " << prevPos.y << " " << prevPos.z << std::endl << std::endl;
-		
+		std::cout << "Collision point	" << collisionPoint.x << " " << collisionPoint.y << " " << collisionPoint.z << std::endl;
+		std::cout << "P0	" << prevPos.x << " " << prevPos.y << " " << prevPos.z << std::endl;
+		std::cout << "Normal:	" << tangentialPlane.normal.x << " " << tangentialPlane.normal.y << " " << tangentialPlane.normal.z << std::endl << std::endl;
+		*/
 	}
 }
 
@@ -297,10 +329,17 @@ for (int j = 0; j < 10; ++j){
 		if (i != 0 && i != 13) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
-			//IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			//IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i]);
 			//springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
-		}
+
+			// Cube collisions
+			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeFront, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeLeft, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeRight, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i]);
+
+			}
 
 
 	}
