@@ -24,7 +24,7 @@ float separationX = 0.5, separationY = 0.5;
 float gravity = -9.8;
 vec3 spherePosition (0.0f, 1.0f, 0.0f);
 float sphereRadius = 1.0f;
-float stretchD = 2, shearD = 2, bendD = 2, stretchK = 200, shearK, bendK;
+float stretchD = 50, shearD = 50, bendD = 50, stretchK = 1000, shearK, bendK;
 
 #pragma endregion
 
@@ -147,8 +147,6 @@ void GUI() {
 	}
 }
 
-
-
 vec3 * CreateClothMeshArray(int rowVerts, int columnVerts, float vertexSeparationX, float vertexSeparationY, vec3 position) {
 	int currPosX = 0, currPosY = 0;
 	vec3 *result = new vec3[columnVerts * rowVerts];
@@ -239,13 +237,14 @@ void springsForceCalc(vec3* position, vec3* velocity, vec3* resultForce, int i, 
 	
 }
 
-void checkMaxElongation(vec3* position, vec3* prevPosition, int i, int rows, int cols, float L, float elongation) {
+void checkMaxElongation(vec3* position, int i, int rows, int cols, float L, float elongation) {
 
 	//LEFT
 	if ((i / cols) - 1 >= 0) {
 
 		if (length(position[i] - position[i - cols * 1]) > L + L * (elongation / 100)) {
-			position[i] = (position[i - cols * 1] + position[i]) / 2.f;
+				position[i] += normalize(position[i - cols * 1] - position[i]) * (L * (elongation / 100) / 2.f);
+				position[i - cols * 1] += normalize(position[i] - position[i - cols * 1]) * (L * (elongation / 100) / 2.f);
 		}
 	
 	}
@@ -254,7 +253,8 @@ void checkMaxElongation(vec3* position, vec3* prevPosition, int i, int rows, int
 	if ((i / cols) + 1 < rows) {
 	
 		if (length(position[i] - position[i + cols * 1]) > L + L * (elongation/100)) {
-			position[i] = (position[i + cols * 1] + position[i]) / 2.f;
+				position[i] += normalize(position[i + cols * 1] - position[i]) * (L * (elongation / 100) / 2.f);
+				position[i + cols * 1] += normalize(position[i] - position[i + cols * 1]) * (L * (elongation / 100) / 2.f);	
 		}
 
 	}
@@ -263,7 +263,8 @@ void checkMaxElongation(vec3* position, vec3* prevPosition, int i, int rows, int
 	if ((i % cols) - 1 >= 0) {
 	
 		if (length(position[i] - position[i - 1]) > L + L * (elongation / 100)) {
-			position[i] = (position[i - 1] + position[i]) / 2.f;
+				position[i] += normalize(position[i - 1] - position[i])  * (L * (elongation / 100) / 2.f);
+				position[i - 1] += normalize(position[i] - position[i - 1]) * (L * (elongation / 100) / 2.f);
 		}
 
 	}
@@ -272,10 +273,14 @@ void checkMaxElongation(vec3* position, vec3* prevPosition, int i, int rows, int
 	if ((i % cols) + 1 < cols) {
 	
 		if (length(position[i] - position[i + 1]) > L + L * (elongation / 100)) {
-			position[i] = (position[i + 1] + position[i]) / 2.f;
+				position[i + 1] += normalize(position[i + 1] - position[i]) * (L * (elongation / 100) / 2.f);
+				position[i] += normalize(position[i] - position[i + 1])  * (L * (elongation / 100) / 2.f) ;
 		}
 
 	}
+
+	position[0] = vec3(-4, 9, -4);
+	position[13] = vec3(-4, 9, 2);
 
 
 }
@@ -321,7 +326,9 @@ void PhysicsUpdate(float dt) {
 	if (ImGui::Button("Reset")) {
 		PhysicsInit();
 	};
+
 	dt /= 10.f;
+
 for (int j = 0; j < 10; ++j){
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
@@ -329,7 +336,6 @@ for (int j = 0; j < 10; ++j){
 		if (i != 0 && i != 13) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
-			//springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
 
 			// Cube collisions
 			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i]);
@@ -347,12 +353,19 @@ for (int j = 0; j < 10; ++j){
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
 		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
-		//checkMaxElongation(clothVertexPosition, clothVertexPrevPosition, j, ClothMesh::numRows, ClothMesh::numCols, separationX, 40);
+		//checkMaxElongation(clothVertexPosition, i, ClothMesh::numRows, ClothMesh::numCols, separationX, 10);
+
+	}
+	for (int i = 0; i < ClothMesh::numVerts; ++i) {
+
+		checkMaxElongation(clothVertexPosition, i, ClothMesh::numRows, ClothMesh::numCols, separationX, 10);
 
 	}
 
 }
+
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
+
 }
 void PhysicsCleanup() {
 	//TODO
