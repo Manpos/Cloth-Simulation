@@ -286,29 +286,33 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	//TODO
-	if (ImGui::Button("Reset")) { 
-		PhysicsInit(); };
+	if (ImGui::Button("Reset")) {
+		PhysicsInit();
+	};
+	dt /= 10.f;
+for (int j = 0; j < 10; ++j){
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
 		if (i != 0 && i != 13) {
 
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
-			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);			
+			//IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
 			//IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i]);
 			//springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
-		}		
-		
-		
+		}
+
+
 	}
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
-		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);			
+		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK);
 		//checkMaxElongation(clothVertexPosition, clothVertexPrevPosition, j, ClothMesh::numRows, ClothMesh::numCols, separationX, 40);
-		
+
 	}
-		
+
+}
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
 }
 void PhysicsCleanup() {
