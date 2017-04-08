@@ -24,7 +24,7 @@ float separationX = 0.5, separationY = 0.5;
 float gravity = -9.8;
 vec3 spherePosition(0.0f, 3.0f, 0.0f);
 float sphereRadius = 2.0f;
-float stretchD = 50, shearD = 50, bendD = 50, stretchK = 1000, shearK = 1000, bendK = 1000;
+float stretchD = 40, shearD = 40, bendD = 40, stretchK = 1000, shearK = 1000, bendK = 1000;
 float elasticity = 1;
 float elongation = 5;
 float timer = 0;
@@ -58,15 +58,14 @@ float SphereQuadraticEquation(float a, float b, float c) {
 // Calculate the collision point between two points and a sphere
 vec3 PointCollisionSphereVector(vec3 position, vec3 prevPosition, float sphereRadius, vec3 sphereCenter) {
 	// Vector between positions (P1 - P0)
-	vec3 vectorPos{ position.x - prevPosition.x, position.y - prevPosition.y, position.z - prevPosition.z };
-	vectorPos = normalize(vectorPos);
+	vec3 vectorPos = normalize(position - prevPosition);
 
 	// Vector between the center of the sphere and P0
-	vec3 vecSpherePos{ prevPosition.x - sphereCenter.x, prevPosition.y - sphereCenter.y, prevPosition.z - sphereCenter.z };
+	vec3 vecSpherePos = prevPosition - sphereCenter;
 
 	//Calculate the three components of the quadratic equation (ax2 + bx + c = 0)
 	// a = (P1 - P0)^2
-	float a = dot(vectorPos, vectorPos);
+	float a = 1;
 	// b = 2 * ((P1 - P0) * (P0 - Sc))
 	float b = 2 * dot(vectorPos, vecSpherePos);
 	// c = (P0 - Sc) * (P0 - Sc) - Sr^2
@@ -76,47 +75,33 @@ vec3 PointCollisionSphereVector(vec3 position, vec3 prevPosition, float sphereRa
 	float alpha = SphereQuadraticEquation(a, b, c);
 
 	// Calculate the point of the collision
-	return prevPosition + (position - prevPosition) * alpha;
+	return prevPosition + (position - prevPosition) * (alpha);
 }
 
-Plane CalculateTangentialPlane(vec3 point, vec3 sphereCenter) {
-	Plane planeTan;
-	planeTan.normal = normalize(point - sphereCenter);
-	planeTan.d = -(planeTan.normal.x * point.x + planeTan.normal.y * point.y + planeTan.normal.z * point.z);
-	return planeTan;
-}
 
-void Bounce(vec3 &prevPosition, vec3 &position, vec3 &velocity, Plane plane, float time) {
-	//std::cout << "Posicio abans			" << position.x << " " << position.y << " " << position.z << std::endl;
-	//std::cout << "Previus abans	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
+void Bounce(vec3 &prevPosition, vec3 &position, vec3 &velocity, Plane plane) {
+
 	position = position - float(1 + elasticity) * (dot(plane.normal, position) + plane.d) * plane.normal;
 	prevPosition = prevPosition - float(1 + elasticity) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal;
-	velocity = (position - prevPosition) / time;
+	velocity = velocity - float(1 + elasticity) * dot(plane.normal, velocity) * plane.normal;
 
-	//std::cout << "Posicio			" << position.x << " " << position.y << " " << position.z << std::endl;
-	//std::cout << "Previus position	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
 }
 
-void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position, vec3 &velocity, float time) {
+void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position, vec3 &velocity) {
 	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
-		Bounce(prevPosition, position, velocity, plane, time);
+		Bounce(prevPosition, position, velocity, plane);
 	}
 }
 
-void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 &prevPos, vec3 &velocity, float time) {
-	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
-	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
+void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 &prevPos, vec3 &velocity) {
+	vec3 pointSphere = position - center;
+	if (length(pointSphere) <= radius) {
 		Plane tanPlane;
 		vec3 collisionPoint = PointCollisionSphereVector(position, prevPos, radius, center);
 		tanPlane.normal = normalize(collisionPoint - center);
-		tanPlane.d = -(tanPlane.normal.x * collisionPoint.x + tanPlane.normal.y * collisionPoint.y + tanPlane.normal.z * collisionPoint.z);
-		Bounce(prevPos, position, velocity, tanPlane, time);
-		/*
-		std::cout << "P1	" << position.x << " " << position.y << " " << position.z << std::endl;
-		std::cout << "Collision point	" << collisionPoint.x << " " << collisionPoint.y << " " << collisionPoint.z << std::endl;
-		std::cout << "P0	" << prevPos.x << " " << prevPos.y << " " << prevPos.z << std::endl;
-		std::cout << "Normal:	" << tangentialPlane.normal.x << " " << tangentialPlane.normal.y << " " << tangentialPlane.normal.z << std::endl << std::endl;
-		*/
+		tanPlane.d = -(dot(tanPlane.normal, collisionPoint));
+		Bounce(prevPos, position, velocity, tanPlane);
+
 	}
 }
 
@@ -126,9 +111,9 @@ void GUI() {
 		ImGui::SliderFloat("Stretch Constant", &stretchK, 500, 1000);
 		ImGui::SliderFloat("Shear Constant", &shearK, 500, 1000);
 		ImGui::SliderFloat("Bend Constant", &bendK, 500, 1000);
-		ImGui::SliderFloat("Stretch Damping", &stretchD, 10, 50);
-		ImGui::SliderFloat("Shear Damping", &shearD, 10, 50);
-		ImGui::SliderFloat("Bend Damping", &bendD, 10, 50);
+		ImGui::SliderFloat("Stretch Damping", &stretchD, 10, 40);
+		ImGui::SliderFloat("Shear Damping", &shearD, 10, 40);
+		ImGui::SliderFloat("Bend Damping", &bendD, 10, 40);
 		ImGui::SliderFloat("Elongation", &elongation, 5, 50);
 	}
 
@@ -310,10 +295,24 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	//TODO
-	if (ImGui::Button("Reset") || timer >= 5) {
+	if (ImGui::Button("Reset") || timer >= 20) {
+
+		delete[] clothVertexForce;
+		delete[] clothVertexPosition;
+		delete[] clothVertexPrevPosition;
+		delete[] clothVertexVelocity;
+
 		PhysicsInit();
-		spherePosition = { 0.0f, 4.0f, 0.0f };
-		sphereRadius = 3.0f;
+
+		float HI = 5, LO = -5;
+		float r1 = LO + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (HI - LO)));
+		float r2 = 0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5 - 0)));
+		float r3 = LO + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (HI - LO)));
+
+		float r4 = 2 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (4 - 2)));
+
+		spherePosition = { r1, r2, r3};
+		sphereRadius = r4;
 		timer = 0;
 	};
 
@@ -328,15 +327,15 @@ for (int j = 0; j < 10; ++j){
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
 
 			// Cube collisions
-			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
-			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
-			IsCollidingBox(planeFront, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
-			IsCollidingBox(planeLeft, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
-			IsCollidingBox(planeRight, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
-			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
+			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
+			IsCollidingBox(planeFront, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
+			IsCollidingBox(planeLeft, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
+			IsCollidingBox(planeRight, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
+			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
 
 			//Sphere collision
-			IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i]);
 
 			}
 	}
@@ -354,10 +353,11 @@ for (int j = 0; j < 10; ++j){
 	}
 
 }
-timer += dt*10;
+	timer += dt*10;
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
 
 }
+
 void PhysicsCleanup() {
 	delete[] clothVertexForce;
 	delete[] clothVertexPosition;
