@@ -22,12 +22,12 @@ vec3 *clothVertexForce;
 
 float separationX = 0.5, separationY = 0.5;
 float gravity = -9.8;
-vec3 spherePosition (0.0f, 1.0f, 0.0f);
-float sphereRadius = 3.0f;
+vec3 spherePosition(0.0f, 3.0f, 0.0f);
+float sphereRadius = 2.0f;
 float stretchD = 50, shearD = 50, bendD = 50, stretchK = 1000, shearK = 1000, bendK = 1000;
-float elasticity = 0.5;
-float elongation = 3;
-
+float elasticity = 1;
+float elongation = 5;
+float timer = 0;
 #pragma endregion
 
 
@@ -86,38 +86,31 @@ Plane CalculateTangentialPlane(vec3 point, vec3 sphereCenter) {
 	return planeTan;
 }
 
-void Bounce(vec3 &prevPosition, vec3 &position, Plane plane) {
+void Bounce(vec3 &prevPosition, vec3 &position, vec3 &velocity, Plane plane, float time) {
 	//std::cout << "Posicio abans			" << position.x << " " << position.y << " " << position.z << std::endl;
 	//std::cout << "Previus abans	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
 	position = position - float(1 + elasticity) * (dot(plane.normal, position) + plane.d) * plane.normal;
 	prevPosition = prevPosition - float(1 + elasticity) * (dot(plane.normal, prevPosition) + plane.d) * plane.normal;
+	velocity = (position - prevPosition) / time;
+
 	//std::cout << "Posicio			" << position.x << " " << position.y << " " << position.z << std::endl;
 	//std::cout << "Previus position	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
 }
 
-void BounceSphere(vec3 &prevPosition, vec3 &position, Plane plane, int i) {
-	//std::cout << "Posicio abans			" << position.x << " " << position.y << " " << position.z << std::endl;
-	//std::cout << "Previus abans	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
-	clothVertexPosition[i] = clothVertexPosition[i] - float(1 + 1) * (dot(plane.normal, clothVertexPosition[i]) + plane.d) * plane.normal;
-	clothVertexPrevPosition[i] = clothVertexPrevPosition[i] - float(1 + 1) * (dot(plane.normal, clothVertexPrevPosition[i]) + plane.d) * plane.normal;
-	//std::cout << "Posicio			" << position.x << " " << position.y << " " << position.z << std::endl;
-	//std::cout << "Previus position	" << prevPosition.x << " " << prevPosition.y << " " << prevPosition.z << std::endl;
-}
-
-void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position) {
+void IsCollidingBox(Plane plane, vec3 &prevPosition, vec3 &position, vec3 &velocity, float time) {
 	if ((dot(plane.normal, prevPosition) + plane.d) * (dot(plane.normal, position) + plane.d) <= 0) {
-		Bounce(prevPosition, position, plane);
+		Bounce(prevPosition, position, velocity, plane, time);
 	}
 }
 
-void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 &prevPos) {
+void IsCollidingSphere(float radius, vec3 center, vec3 &position, vec3 &prevPos, vec3 &velocity, float time) {
 	vec3 pointSphere(position.x - center.x, position.y - center.y, position.z - center.z);
 	if (sqrt((pointSphere.x * pointSphere.x) + (pointSphere.y * pointSphere.y) + (pointSphere.z * pointSphere.z)) <= radius) {
 		Plane tanPlane;
 		vec3 collisionPoint = PointCollisionSphereVector(position, prevPos, radius, center);
 		tanPlane.normal = normalize(collisionPoint - center);
 		tanPlane.d = -(tanPlane.normal.x * collisionPoint.x + tanPlane.normal.y * collisionPoint.y + tanPlane.normal.z * collisionPoint.z);
-		Bounce(prevPos, position, tanPlane);
+		Bounce(prevPos, position, velocity, tanPlane, time);
 		/*
 		std::cout << "P1	" << position.x << " " << position.y << " " << position.z << std::endl;
 		std::cout << "Collision point	" << collisionPoint.x << " " << collisionPoint.y << " " << collisionPoint.z << std::endl;
@@ -136,7 +129,7 @@ void GUI() {
 		ImGui::SliderFloat("Stretch Damping", &stretchD, 10, 50);
 		ImGui::SliderFloat("Shear Damping", &shearD, 10, 50);
 		ImGui::SliderFloat("Bend Damping", &bendD, 10, 50);
-		ImGui::SliderFloat("Elongation", &elongation, 3, 50);
+		ImGui::SliderFloat("Elongation", &elongation, 5, 50);
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
@@ -317,8 +310,11 @@ void PhysicsInit() {
 
 void PhysicsUpdate(float dt) {
 	//TODO
-	if (ImGui::Button("Reset")) {
+	if (ImGui::Button("Reset") || timer >= 5) {
 		PhysicsInit();
+		spherePosition = { 0.0f, 4.0f, 0.0f };
+		sphereRadius = 3.0f;
+		timer = 0;
 	};
 
 	dt /= 10.f;
@@ -332,15 +328,15 @@ for (int j = 0; j < 10; ++j){
 			verletSolver(clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], clothVertexForce[i], 1, dt);
 
 			// Cube collisions
-			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			IsCollidingBox(planeFront, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			IsCollidingBox(planeLeft, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			IsCollidingBox(planeRight, clothVertexPrevPosition[i], clothVertexPosition[i]);
-			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i]);
+			IsCollidingBox(planeBack, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeDown, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeFront, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeLeft, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeRight, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
+			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i], dt);
 
 			//Sphere collision
-			IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i]);
+			IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i], dt);
 
 			}
 	}
@@ -358,7 +354,7 @@ for (int j = 0; j < 10; ++j){
 	}
 
 }
-
+timer += dt*10;
 	ClothMesh::updateClothMesh(&clothVertexPosition[0].x);
 
 }
