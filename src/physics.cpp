@@ -20,14 +20,15 @@ vec3 *clothVertexForce;
 
 #pragma region Variables
 
-float separationX = 0.5, separationY = 0.5;
+float separation = 0.5, nextSeparation = 0.5;
 float gravity = -9.8;
-vec3 spherePosition(0.0f, 3.0f, 0.0f);
+vec3 spherePosition(2.0f, 3.0f, 0.0f);
 float sphereRadius = 2.0f;
 float stretchD = 40, shearD = 40, bendD = 40, stretchK = 1000, shearK = 1000, bendK = 1000;
 float elasticity = 1;
 float elongation = 5;
 float timer = 0;
+bool sphereCollision = true;
 #pragma endregion
 
 
@@ -115,6 +116,7 @@ void GUI() {
 		ImGui::SliderFloat("Shear Damping", &shearD, 10, 40);
 		ImGui::SliderFloat("Bend Damping", &bendD, 10, 40);
 		ImGui::SliderFloat("Elongation", &elongation, 5, 50);
+		ImGui::SliderFloat("Points separation", &nextSeparation, 0.2, 0.5);
 	}
 
 	// ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
@@ -272,7 +274,7 @@ void verletSolver(vec3 &position, vec3 &prevPosition, vec3 &velocity, vec3 force
 
 void PhysicsInit() {
 	vec3 meshPosition ( -4 , 9, -4 );
-	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, separationX, separationY, meshPosition);
+	clothVertexPosition = CreateClothMeshArray(ClothMesh::numRows, ClothMesh::numCols, separation, separation, meshPosition);
 	clothVertexPrevPosition = new vec3[ClothMesh::numVerts];
 	clothVertexVelocity = new vec3[ClothMesh::numVerts];
 	clothVertexForce = new vec3[ClothMesh::numVerts];
@@ -302,6 +304,8 @@ void PhysicsUpdate(float dt) {
 		delete[] clothVertexPrevPosition;
 		delete[] clothVertexVelocity;
 
+		separation = nextSeparation;
+
 		PhysicsInit();
 
 		float HI = 5, LO = -5;
@@ -316,6 +320,9 @@ void PhysicsUpdate(float dt) {
 		timer = 0;
 	};
 
+	if (ImGui::Button("Sphere Collision")) {
+		sphereCollision = !sphereCollision;
+	}
 	dt /= 10.f;
 
 for (int j = 0; j < 10; ++j){
@@ -335,20 +342,20 @@ for (int j = 0; j < 10; ++j){
 			IsCollidingBox(planeTop, clothVertexPrevPosition[i], clothVertexPosition[i], clothVertexVelocity[i]);
 
 			//Sphere collision
-			IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i]);
+			if(sphereCollision)	IsCollidingSphere(sphereRadius, spherePosition, clothVertexPosition[i], clothVertexPrevPosition[i], clothVertexVelocity[i]);
 
 			}
 	}
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
-		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separationX, stretchD, shearD, bendD, stretchK, shearK, bendK);
+		springsForceCalc(clothVertexPosition, clothVertexVelocity, clothVertexForce, i, ClothMesh::numRows, ClothMesh::numCols, separation, stretchD, shearD, bendD, stretchK, shearK, bendK);
 
 	}
 
 	for (int i = 0; i < ClothMesh::numVerts; ++i) {
 
-		checkMaxElongation(clothVertexPosition, clothVertexVelocity, i, ClothMesh::numRows, ClothMesh::numCols, separationX, elongation);
+		checkMaxElongation(clothVertexPosition, clothVertexVelocity, i, ClothMesh::numRows, ClothMesh::numCols, separation, elongation);
 
 	}
 
